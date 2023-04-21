@@ -1,5 +1,12 @@
+from rest_framework import status
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.decorators import api_view
+from rest_framework_simplejwt.serializers import TokenObtainSerializer
+from rest_framework_simplejwt.tokens import RefreshToken
 from backend.foodgram.core.paginators import CustomPagination
+from django.shortcuts import get_object_or_404
 
 from .serializers import UserSerializer, CreateUserSerializer
 from .models import User
@@ -32,6 +39,8 @@ class UserViewSet(ModelViewSet):
     def get_permissions(self):
         if self.action == 'create':
             return super().get_permissions()
+        elif self.action == 'retrieve':
+            return [IsAuthenticated()]
         else:
             return [IsAdmin()]
 
@@ -40,4 +49,21 @@ class UserViewSet(ModelViewSet):
             return CreateUserSerializer
         else:
             return UserSerializer
+
+
+@api_view(['POST'])
+def token_obtain(request):
+    serializer = TokenObtainSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    token = RefreshToken.for_user(get_object_or_404(
+        User, username=request.data.get('username'))
+    )
+    return Response({'token': str(token.access_token)}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def user_info(request):
+    return Response(
+        UserSerializer(get_object_or_404(User, pk=request.user.pk)).data
+    )
 

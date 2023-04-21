@@ -24,11 +24,6 @@ class User(AbstractUser):
         choices=Role.choices,
         default=Role.USER
     )
-    confirmation_code = models.CharField(
-        max_length=40,
-        editable=False,
-        default=str(uuid4())
-    )
 
     class Meta:
         ordering = ['id']
