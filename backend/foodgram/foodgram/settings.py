@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'rest_framework.authtoken',
     'djoser',
     'foodgram',
-    'users'
+    'users',
+    'tags'
 ]
 
 MIDDLEWARE = [
