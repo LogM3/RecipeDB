@@ -43,7 +43,8 @@ INSTALLED_APPS = [
     'djoser',
     'foodgram',
     'users',
-    'tags'
+    'tags',
+    'recipes'
 ]
 
 MIDDLEWARE = [
