@@ -31,7 +31,7 @@ services:
       - static_volume:/var/html/static/
 
   backend:
-    build: ../backend/
+    image: logm3/practicum:latest
     volumes:
       - static_volume:/app/static/
       - media_volume:/app/media/
