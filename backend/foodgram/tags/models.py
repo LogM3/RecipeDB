@@ -1,4 +1,4 @@
-from django.db.models import Model, CharField, SlugField
+from django.db.models import CharField, Model, SlugField
 
 from .validators import hex_color_validate
 

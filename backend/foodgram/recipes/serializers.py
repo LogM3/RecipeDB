@@ -1,24 +1,18 @@
 import base64
 
-from rest_framework.serializers import (
-    ModelSerializer,
-    PrimaryKeyRelatedField,
-    ListField,
-    DictField,
-    HiddenField,
-    CurrentUserDefault,
-    ReadOnlyField,
-    ImageField
-)
-from django.shortcuts import get_object_or_404
-from django.db.transaction import atomic
 from django.core.files.base import ContentFile
-from rest_framework.serializers import ValidationError, SerializerMethodField
-
-from .models import Ingredient, Recipe, IngredientRecipe, RecipeFollow, Cart
+from django.db.transaction import atomic
+from django.shortcuts import get_object_or_404
+from rest_framework.serializers import (CurrentUserDefault, DictField,
+                                        HiddenField, ImageField, ListField,
+                                        ModelSerializer,
+                                        PrimaryKeyRelatedField, ReadOnlyField,
+                                        SerializerMethodField, ValidationError)
 from tags.models import Tag
-from users.serializers import CustomUserSerializer
 from tags.serializers import TagSerializer
+from users.serializers import CustomUserSerializer
+
+from .models import Cart, Ingredient, IngredientRecipe, Recipe, RecipeFollow
 
 RECIPE_FIELDS = (
     'id',
@@ -148,4 +142,3 @@ class CreateRecipeSerializer(ModelSerializer):
                     amount=ingredient_data.get('amount')
                 )
         return instance
-

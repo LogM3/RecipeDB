@@ -1,33 +1,23 @@
-from django.shortcuts import get_object_or_404
+from core.permissions import IsAuthor
 from django.db.transaction import atomic
 from django.http import HttpResponse
-from rest_framework.response import Response
-from rest_framework.status import (
-    HTTP_201_CREATED,
-    HTTP_200_OK,
-    HTTP_400_BAD_REQUEST,
-    HTTP_204_NO_CONTENT
-)
-from rest_framework.viewsets import ReadOnlyModelViewSet, ModelViewSet
-from rest_framework.filters import SearchFilter
-from rest_framework.permissions import (
-    IsAuthenticatedOrReadOnly,
-    IsAuthenticated
-)
-from rest_framework.decorators import action
+from django.shortcuts import get_object_or_404
 from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen.canvas import Canvas
+from rest_framework.decorators import action
+from rest_framework.filters import SearchFilter
+from rest_framework.permissions import (IsAuthenticated,
+                                        IsAuthenticatedOrReadOnly)
+from rest_framework.response import Response
+from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
+                                   HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST)
+from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
-from .models import Ingredient, IngredientRecipe, Recipe, RecipeFollow, Cart
 from .filters import RecipeFilters
-from .serializers import (
-    IngredientsSerializer,
-    ReadOnlyRecipeSerializer,
-    CreateRecipeSerializer,
-    ShortRecipeSerializer
-)
-from core.permissions import IsAuthor
+from .models import Cart, Ingredient, IngredientRecipe, Recipe, RecipeFollow
+from .serializers import (CreateRecipeSerializer, IngredientsSerializer,
+                          ReadOnlyRecipeSerializer, ShortRecipeSerializer)
 
 
 class IngredientsViewSet(ReadOnlyModelViewSet):
@@ -48,26 +38,30 @@ class RecipesViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return ReadOnlyRecipeSerializer
-        else:
-            return CreateRecipeSerializer
-    
+        return CreateRecipeSerializer
+
     def get_permissions(self):
         if self.action in ['partial_update', 'destroy']:
             return [IsAuthor()]
-        else:
-            return super().get_permissions()
-    
+        return super().get_permissions()
+
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         recipe = serializer.save()
-        serializer = ReadOnlyRecipeSerializer(recipe, context={'request': request})
+        serializer = ReadOnlyRecipeSerializer(
+            recipe,
+            context={'request': request}
+        )
         return Response(serializer.data, status=HTTP_201_CREATED)
 
     def partial_update(self, request, *args, **kwargs):
         serializer = self.get_serializer(self.get_object(), data=request.data)
         serializer.is_valid(raise_exception=True)
-        serializer = ReadOnlyRecipeSerializer(serializer.save(), context={'request': request})
+        serializer = ReadOnlyRecipeSerializer(
+            serializer.save(),
+            context={'request': request}
+        )
         return Response(serializer.data, status=HTTP_200_OK)
 
     @action(methods=['POST', 'DELETE'], detail=True)
@@ -87,15 +81,15 @@ class RecipesViewSet(ModelViewSet):
             return Response(
                 ShortRecipeSerializer(recipe).data, status=HTTP_201_CREATED
             )
-        if request.method == 'DELETE':
-            if not is_favorite:
-                return Response(
-                    'You are not liked this recipe',
-                    status=HTTP_400_BAD_REQUEST
-                )
-            with atomic():
-                RecipeFollow.objects.filter(recipe=recipe, user=user).delete()
-            return Response(status=HTTP_204_NO_CONTENT)
+
+        if not is_favorite:
+            return Response(
+                'You are not liked this recipe',
+                status=HTTP_400_BAD_REQUEST
+            )
+        with atomic():
+            RecipeFollow.objects.filter(recipe=recipe, user=user).delete()
+        return Response(status=HTTP_204_NO_CONTENT)
 
     @action(methods=['POST', 'DELETE'], detail=True)
     def shopping_cart(self, request, pk):
@@ -113,17 +107,18 @@ class RecipesViewSet(ModelViewSet):
                 ShortRecipeSerializer(recipe).data,
                 status=HTTP_201_CREATED
             )
-        if request.method == 'DELETE':
-            if not is_in_cart:
-                return Response(
-                    'You have not added this recipe to your cart yet.',
-                    status=HTTP_400_BAD_REQUEST
-                )
-            with atomic():
-                is_in_cart.delete()
-            return Response(status=HTTP_204_NO_CONTENT)
 
-    @action(methods=['GET'], detail=False, permission_classes=[IsAuthenticated])
+        if not is_in_cart:
+            return Response(
+                'You have not added this recipe to your cart yet.',
+                status=HTTP_400_BAD_REQUEST
+            )
+        with atomic():
+            is_in_cart.delete()
+        return Response(status=HTTP_204_NO_CONTENT)
+
+    @action(methods=['GET'], detail=False,
+            permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
         def get_ingredient_filed(field: str) -> int:
             ingredients_indexes = {
@@ -177,5 +172,3 @@ class RecipesViewSet(ModelViewSet):
         page.showPage()
         page.save()
         return response
-
-

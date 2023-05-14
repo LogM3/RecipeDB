@@ -1,6 +1,5 @@
-from django.db import models
 from django.core.validators import MinValueValidator
-
+from django.db import models
 from tags.models import Tag
 from users.models import User
 
@@ -19,7 +18,10 @@ class Ingredient(models.Model):
 class Recipe(models.Model):
     tags = models.ManyToManyField(Tag, related_name='tags')
     author = models.ForeignKey(User, models.CASCADE, related_name='recipes')
-    ingredients = models.ManyToManyField(Ingredient, through='IngredientRecipe')
+    ingredients = models.ManyToManyField(
+        Ingredient,
+        through='IngredientRecipe'
+    )
     name = models.CharField(max_length=200)
     image = models.ImageField(upload_to='recipes/images')
     text = models.TextField()
@@ -55,4 +57,3 @@ class Cart(models.Model):
 
     def __str__(self):
         return f'Cart of {self.user} with {self.recipe}'
-

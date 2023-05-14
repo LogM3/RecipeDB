@@ -1,5 +1,5 @@
-from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.viewsets import ReadOnlyModelViewSet
 
 from .models import Tag
 from .serializers import TagSerializer

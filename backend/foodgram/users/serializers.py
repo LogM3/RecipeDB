@@ -1,8 +1,8 @@
 from djoser.serializers import UserCreateSerializer, UserSerializer
+from recipes.models import Recipe
 from rest_framework.serializers import CharField, SerializerMethodField
 
 from .models import User
-from recipes.models import Recipe
 
 READ_ONLY_USER_FIELDS = [
     'email',

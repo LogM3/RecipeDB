@@ -1,13 +1,10 @@
-from django.shortcuts import get_object_or_404
 from django.db.transaction import atomic
+from django.shortcuts import get_object_or_404
 from djoser.views import UserViewSet
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.status import (
-    HTTP_400_BAD_REQUEST,
-    HTTP_201_CREATED,
-    HTTP_204_NO_CONTENT
-)
+from rest_framework.status import (HTTP_201_CREATED, HTTP_204_NO_CONTENT,
+                                   HTTP_400_BAD_REQUEST)
 
 from .models import User, UserFollow
 from .serializers import CustomUserSerializerWithRecipes as UserSerializer
@@ -35,15 +32,15 @@ class UserFollowsViewSet(UserViewSet):
                 UserSerializer(author, context={'request': request}).data,
                 HTTP_201_CREATED
             )
-        if request.method == 'DELETE':
-            if not is_subscribed:
-                return Response(
-                    'You are not subscribed to this user',
-                    status=HTTP_400_BAD_REQUEST
-                )
-            with atomic():
-                UserFollow.objects.filter(user=user, author=author).delete()
-            return Response(status=HTTP_204_NO_CONTENT)
+
+        if not is_subscribed:
+            return Response(
+                'You are not subscribed to this user',
+                status=HTTP_400_BAD_REQUEST
+            )
+        with atomic():
+            UserFollow.objects.filter(user=user, author=author).delete()
+        return Response(status=HTTP_204_NO_CONTENT)
 
     @action(methods=['GET'], detail=False)
     def subscriptions(self, request):
@@ -56,4 +53,3 @@ class UserFollowsViewSet(UserViewSet):
                 context={'request': request}
             ).data
         )
-
