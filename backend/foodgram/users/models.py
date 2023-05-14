@@ -31,3 +31,20 @@ class User(AbstractUser):
     @property
     def is_admin(self):
         return self.role == Role.ADMIN
+
+
+class UserFollow(models.Model):
+    author = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='subscribers'
+    )
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='subscribed'
+    )
+
+    def __str__(self):
+        return f'{self.user} -> {self.author}'
+

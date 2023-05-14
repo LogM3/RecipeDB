@@ -3,7 +3,7 @@ from .models import Tag
 
 
 class TagAdmin(admin.ModelAdmin):
-    list_display = ['id', 'name']
+    list_display = ['name', 'slug']
     search_fields = ['id', 'name']
 
 

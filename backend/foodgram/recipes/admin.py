@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Ingredient
+from .models import Ingredient, Recipe, RecipeFollow, IngredientRecipe, Cart
 
 
 class IngredientAdmin(admin.ModelAdmin):
@@ -7,4 +7,13 @@ class IngredientAdmin(admin.ModelAdmin):
     search_fields = ['name']
 
 
+class RecipeAdmin(admin.ModelAdmin):
+    list_display = ['name', 'author']
+    search_fields = ['author', 'name', 'tags']
+
+
 admin.site.register(Ingredient, IngredientAdmin)
+admin.site.register(Recipe, RecipeAdmin)
+admin.site.register(RecipeFollow)
+admin.site.register(IngredientRecipe)
+admin.site.register(Cart)

@@ -7,6 +7,16 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ../frontend/:/app/result_build/
+
+  db:
+    image: postgres:13.0-alpine
+    volumes:
+      - database_volume:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    env_file:
+      - ../backend/foodgram/foodgram/.env
+
   nginx:
     image: nginx:1.19.3
     depends_on:
@@ -17,10 +27,18 @@ services:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf
       - ../frontend/build:/usr/share/nginx/html/
       - ../docs/:/usr/share/nginx/html/api/docs/
+      - media_volume:/var/html/media/
+      - static_volume:/var/html/static/
+
   backend:
     build: ../backend/
     volumes:
       - static_volume:/app/static/
+      - media_volume:/app/media/
+    depends_on:
+      - db
 
 volumes:
   static_volume:
+  media_volume:
+  database_volume:

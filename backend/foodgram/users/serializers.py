@@ -1,7 +1,20 @@
 from djoser.serializers import UserCreateSerializer, UserSerializer
-from rest_framework.serializers import CharField
+from rest_framework.serializers import CharField, SerializerMethodField
 
 from .models import User
+from recipes.models import Recipe
+
+READ_ONLY_USER_FIELDS = [
+    'email',
+    'id',
+    'username',
+    'first_name',
+    'last_name',
+    'is_subscribed',
+    'recipes',
+    'recipes_count'
+]
+COMMON_FIELDS_END_INDEX = -2
 
 
 class CustomUserCreateSerializer(UserCreateSerializer):
@@ -14,7 +27,40 @@ class CustomUserCreateSerializer(UserCreateSerializer):
 
 
 class CustomUserSerializer(UserSerializer):
+    is_subscribed = SerializerMethodField()
+
     class Meta:
         model = User
-        fields = ('email', 'id', 'username', 'first_name', 'last_name')
+        fields = READ_ONLY_USER_FIELDS[:COMMON_FIELDS_END_INDEX]
 
+    def get_is_subscribed(self, obj):
+        current_user = self.context.get('request').user
+        if current_user.is_anonymous or current_user == obj:
+            return False
+        return current_user.subscribed.filter(author=obj).exists()
+
+
+class CustomUserSerializerWithRecipes(CustomUserSerializer):
+    recipes = SerializerMethodField()
+    recipes_count = SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = READ_ONLY_USER_FIELDS
+
+    def get_recipes(self, obj):
+        from recipes.serializers import ShortRecipeSerializer
+
+        limit = self.context.get('request').GET.get('recipes_limit')
+        if limit:
+            return ShortRecipeSerializer(
+                Recipe.objects.filter(author=obj)[:int(limit)],
+                many=True
+            ).data
+        return ShortRecipeSerializer(
+            Recipe.objects.filter(author=obj),
+            many=True
+        ).data
+
+    def get_recipes_count(self, obj):
+        return Recipe.objects.filter(author=obj).count()
