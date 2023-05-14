@@ -62,3 +62,5 @@ jobs:
           sudo docker pull logm3/practicum
           sudo docker stop $(sudo docker ps -a -q)
           sudo docker run --rm -d -p 5000:5000 logm3/practicum
+          sudo docker container exec infra-backend-1 python manage.py makemigrations
+          sudo docker container exec infra-backend-1 python manage.py migrate
