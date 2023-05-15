@@ -15,12 +15,9 @@ class UserFollowsViewSet(UserViewSet):
     def subscribe(self, request, id):
         user = request.user
         author = get_object_or_404(User, pk=id)
-        is_subscribed = (
-            UserFollow.objects.filter(
-                user=user,
-                author=author
-            ).exists() or user == author
-        )
+        is_subscribed = user == author or UserFollow.objects.filter(
+            user=user, author=author
+        ).exists()
         if request.method == 'POST':
             if is_subscribed:
                 return Response(

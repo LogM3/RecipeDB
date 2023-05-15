@@ -1,4 +1,5 @@
 from core.permissions import IsAuthor
+from django.db.models import Sum
 from django.db.transaction import atomic
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -9,9 +10,10 @@ from rest_framework.decorators import action
 from rest_framework.filters import SearchFilter
 from rest_framework.permissions import (IsAuthenticated,
                                         IsAuthenticatedOrReadOnly)
+from rest_framework.request import HttpRequest as Request
 from rest_framework.response import Response
-from rest_framework.status import (HTTP_200_OK, HTTP_201_CREATED,
-                                   HTTP_204_NO_CONTENT, HTTP_400_BAD_REQUEST)
+from rest_framework.status import (HTTP_201_CREATED, HTTP_204_NO_CONTENT,
+                                   HTTP_400_BAD_REQUEST)
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from .filters import RecipeFilters
@@ -45,77 +47,49 @@ class RecipesViewSet(ModelViewSet):
             return [IsAuthor()]
         return super().get_permissions()
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        recipe = serializer.save()
-        serializer = ReadOnlyRecipeSerializer(
-            recipe,
-            context={'request': request}
-        )
-        return Response(serializer.data, status=HTTP_201_CREATED)
+    def __add_or_remove__(
+            self, request: Request, recipe: Recipe, obj_to_create) -> Response:
+        actions = {
+            RecipeFollow: 'liked',
+            Cart: 'put in cart'
+        }
 
-    def partial_update(self, request, *args, **kwargs):
-        serializer = self.get_serializer(self.get_object(), data=request.data)
-        serializer.is_valid(raise_exception=True)
-        serializer = ReadOnlyRecipeSerializer(
-            serializer.save(),
-            context={'request': request}
-        )
-        return Response(serializer.data, status=HTTP_200_OK)
-
-    @action(methods=['POST', 'DELETE'], detail=True)
-    def favorite(self, request, pk):
-        user = request.user
-        recipe = get_object_or_404(Recipe, pk=pk)
-        is_favorite = RecipeFollow.objects.filter(
+        is_exists = obj_to_create.objects.filter(
             user=request.user, recipe=recipe
-        )
+        ).exists()
         if request.method == 'POST':
-            if is_favorite:
+            if is_exists:
                 return Response(
-                    'You are already liked this recipe',
+                    f'You already {actions[obj_to_create]} this recipe',
                     status=HTTP_400_BAD_REQUEST
                 )
-            RecipeFollow.objects.create(user=request.user, recipe=recipe)
+            obj_to_create.objects.create(user=request.user, recipe=recipe)
             return Response(
                 ShortRecipeSerializer(recipe).data, status=HTTP_201_CREATED
             )
-
-        if not is_favorite:
+        if not is_exists:
             return Response(
-                'You are not liked this recipe',
+                f'You are not {actions[obj_to_create]} this recipe',
                 status=HTTP_400_BAD_REQUEST
             )
         with atomic():
-            RecipeFollow.objects.filter(recipe=recipe, user=user).delete()
+            obj_to_create.objects.filter(
+                recipe=recipe,
+                user=request.user
+            ).delete()
         return Response(status=HTTP_204_NO_CONTENT)
 
     @action(methods=['POST', 'DELETE'], detail=True)
-    def shopping_cart(self, request, pk):
-        user = request.user
-        recipe = get_object_or_404(Recipe, pk=pk)
-        is_in_cart = Cart.objects.filter(user=user, recipe=recipe)
-        if request.method == 'POST':
-            if is_in_cart:
-                return Response(
-                    'You are already added this recipe to your cart',
-                    status=HTTP_400_BAD_REQUEST
-                )
-            Cart.objects.create(user=user, recipe=recipe)
-            return Response(
-                ShortRecipeSerializer(recipe).data,
-                status=HTTP_201_CREATED
-            )
+    def favorite(self, request, pk):
+        return self.__add_or_remove__(
+            self.request, get_object_or_404(Recipe, pk=pk), RecipeFollow
+        )
 
-        if not is_in_cart:
-            return Response(
-                'You have not added this recipe to your cart yet.',
-                status=HTTP_400_BAD_REQUEST
-            )
-        with atomic():
-            is_in_cart.delete()
-        return Response(status=HTTP_204_NO_CONTENT)
+    @action(methods=['POST', 'DELETE'], detail=True)
+    def shopping_cart(self, request, pk):
+        return self.__add_or_remove__(
+            self.request, get_object_or_404(Recipe, pk=pk), Cart
+        )
 
     @action(methods=['GET'], detail=False,
             permission_classes=[IsAuthenticated])
@@ -129,6 +103,7 @@ class RecipesViewSet(ModelViewSet):
             return ingredients_indexes.get(field)
 
         ingredients_total = {}
+        # При аннотировании в выборке всё равно присутствуют повторяющиеся ингредиенты
         ingredients = IngredientRecipe.objects.filter(
             recipe__cart_of__user=request.user
         ).values_list(
@@ -140,7 +115,7 @@ class RecipesViewSet(ModelViewSet):
             name = ingredient[get_ingredient_filed('name')]
             amount = ingredient[get_ingredient_filed('amount')]
 
-            if ingredient in ingredients_total:
+            if name in ingredients_total:
                 ingredients_total[name]['amount'] += amount
             else:
                 measurement_unit = ingredient[get_ingredient_filed(

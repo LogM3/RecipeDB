@@ -1,6 +1,9 @@
 from djoser.serializers import UserCreateSerializer, UserSerializer
-from recipes.models import Recipe
 from rest_framework.serializers import CharField, SerializerMethodField
+
+from recipes.models import Recipe
+from recipes.serializers import ShortRecipeSerializer
+
 
 from .models import User
 
@@ -49,8 +52,6 @@ class CustomUserSerializerWithRecipes(CustomUserSerializer):
         fields = READ_ONLY_USER_FIELDS
 
     def get_recipes(self, obj):
-        from recipes.serializers import ShortRecipeSerializer
-
         limit = self.context.get('request').GET.get('recipes_limit')
         if limit:
             return ShortRecipeSerializer(

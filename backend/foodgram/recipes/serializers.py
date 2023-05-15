@@ -1,17 +1,14 @@
-import base64
-
-from django.core.files.base import ContentFile
 from django.db.transaction import atomic
-from django.shortcuts import get_object_or_404
 from rest_framework.serializers import (CurrentUserDefault, DictField,
-                                        HiddenField, ImageField, ListField,
+                                        HiddenField, ListField,
                                         ModelSerializer,
                                         PrimaryKeyRelatedField, ReadOnlyField,
                                         SerializerMethodField, ValidationError)
+
 from tags.models import Tag
 from tags.serializers import TagSerializer
 from users.serializers import CustomUserSerializer
-
+from .fields import Base64ImageField
 from .models import Cart, Ingredient, IngredientRecipe, Recipe, RecipeFollow
 
 RECIPE_FIELDS = (
@@ -38,19 +35,11 @@ class IngredientsSerializer(ModelSerializer):
 class IngredientsRecipeSerializer(ModelSerializer):
     name = ReadOnlyField(source='ingredients.name')
     measurement_unit = ReadOnlyField(source='ingredients.measurement_unit')
+    id = ReadOnlyField(source='ingredients.id')
 
     class Meta:
         model = IngredientRecipe
         fields = ('id', 'name', 'measurement_unit', 'amount')
-
-
-class Base64ImageField(ImageField):
-    def to_internal_value(self, data):
-        if isinstance(data, str) and data.startswith('data:image'):
-            _format, _imgstr = data.split(';base64,')
-            ext = _format.split('/')[-1]
-            data = ContentFile(base64.b64decode(_imgstr), name='temp.' + ext)
-        return super().to_internal_value(data)
 
 
 class ReadOnlyRecipeSerializer(ModelSerializer):
@@ -93,6 +82,20 @@ class ShortRecipeSerializer(ModelSerializer):
         fields = ['id', 'name', 'image', 'cooking_time']
 
 
+def add_ingredients(ingredients_data: list, recipe: Recipe) -> Recipe:
+    ingredients_list = []
+    for ingredient_data in ingredients_data:
+        ingredients_list.append(IngredientRecipe(
+            recipe=recipe,
+            ingredients=Ingredient.objects.get(
+                id=ingredient_data.get('id')
+            ),
+            amount=ingredient_data.get('amount')
+        ))
+    IngredientRecipe.objects.bulk_create(ingredients_list)
+    return recipe
+
+
 class CreateRecipeSerializer(ModelSerializer):
     tags = PrimaryKeyRelatedField(many=True, queryset=Tag.objects.all())
     author = HiddenField(default=CurrentUserDefault())
@@ -104,12 +107,24 @@ class CreateRecipeSerializer(ModelSerializer):
         fields = RECIPE_FIELDS[:RECIPE_CREATE_CUTOFF_INDEX]
 
     def validate_ingredients(self, ingredients_data):
+        ingredients_ids = set()
+
         for ingredient in ingredients_data:
             keys = ingredient.keys()
             if 'id' not in keys or 'amount' not in keys:
                 raise ValidationError('Invalid ingredient data')
+
+            ingredient_id = ingredient.get('id')
+            if ingredient.get('id') in ingredients_ids:
+                raise ValidationError(
+                    f'Duplicate ingredient ID: {ingredient_id}')
+            ingredients_ids.add(ingredient_id)
+
+            if not Ingredient.objects.filter(id=ingredient_id).exists():
+                raise ValidationError('No such ingredient')
             if int(ingredient.get('amount')) < 1:
                 raise ValidationError('Amount must be greater or equal 1')
+
         return ingredients_data
 
     def create(self, validated_data):
@@ -117,28 +132,19 @@ class CreateRecipeSerializer(ModelSerializer):
         tags_data = validated_data.pop('tags')
         recipe = Recipe.objects.create(**validated_data)
         recipe.tags.set(tags_data)
-        for ingredient_data in ingredients_data:
-            ingredient = get_object_or_404(
-                Ingredient, id=ingredient_data.get('id')
-            )
-            IngredientRecipe.objects.create(
-                recipe=recipe,
-                ingredients=ingredient,
-                amount=ingredient_data.get('amount')
-            )
-        return recipe
+        return add_ingredients(ingredients_data, recipe)
 
     def update(self, instance, validated_data):
         instance.tags.set(validated_data.get('tags'))
         with atomic():
             instance.ingredientrecipe_set.all().delete()
-            for ingredient_data in validated_data.get('ingredients'):
-                ingredient = get_object_or_404(
-                    Ingredient, id=ingredient_data.get('id')
-                )
-                IngredientRecipe.objects.create(
-                    recipe=instance,
-                    ingredients=ingredient,
-                    amount=ingredient_data.get('amount')
-                )
-        return instance
+            return add_ingredients(
+                validated_data.get('ingredients'),
+                instance
+            )
+
+    def to_representation(self, instance):
+        return ReadOnlyRecipeSerializer(
+            instance,
+            context={'request': self.context.get('request')}
+        ).data

@@ -14,7 +14,6 @@ class RecipeFilters(FilterSet):
         fields = ['tags']
 
     def filter_is_favorited(self, queryset, name, value):
-        print('value')
         if value and not self.request.user.is_anonymous:
             return queryset.filter(is_favorite__user=self.request.user)
         return queryset
