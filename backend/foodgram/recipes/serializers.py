@@ -7,9 +7,11 @@ from rest_framework.serializers import (CurrentUserDefault, DictField,
 
 from tags.models import Tag
 from tags.serializers import TagSerializer
-from users.serializers import CustomUserSerializer
+from users.models import User
+from users.serializers import READ_ONLY_USER_FIELDS, CustomUserSerializer
 from .fields import Base64ImageField
 from .models import Cart, Ingredient, IngredientRecipe, Recipe, RecipeFollow
+from .utils import add_ingredients
 
 RECIPE_FIELDS = (
     'id',
@@ -82,20 +84,6 @@ class ShortRecipeSerializer(ModelSerializer):
         fields = ['id', 'name', 'image', 'cooking_time']
 
 
-def add_ingredients(ingredients_data: list, recipe: Recipe) -> Recipe:
-    ingredients_list = []
-    for ingredient_data in ingredients_data:
-        ingredients_list.append(IngredientRecipe(
-            recipe=recipe,
-            ingredients=Ingredient.objects.get(
-                id=ingredient_data.get('id')
-            ),
-            amount=ingredient_data.get('amount')
-        ))
-    IngredientRecipe.objects.bulk_create(ingredients_list)
-    return recipe
-
-
 class CreateRecipeSerializer(ModelSerializer):
     tags = PrimaryKeyRelatedField(many=True, queryset=Tag.objects.all())
     author = HiddenField(default=CurrentUserDefault())
@@ -148,3 +136,27 @@ class CreateRecipeSerializer(ModelSerializer):
             instance,
             context={'request': self.context.get('request')}
         ).data
+
+
+class CustomUserSerializerWithRecipes(CustomUserSerializer):
+    recipes = SerializerMethodField()
+    recipes_count = SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = READ_ONLY_USER_FIELDS
+
+    def get_recipes(self, obj):
+        limit = self.context.get('request').GET.get('recipes_limit')
+        if limit:
+            return ShortRecipeSerializer(
+                Recipe.objects.filter(author=obj)[:int(limit)],
+                many=True
+            ).data
+        return ShortRecipeSerializer(
+            Recipe.objects.filter(author=obj),
+            many=True
+        ).data
+
+    def get_recipes_count(self, obj):
+        return Recipe.objects.filter(author=obj).count()

@@ -47,12 +47,13 @@ class RecipesViewSet(ModelViewSet):
             return [IsAuthor()]
         return super().get_permissions()
 
-    def __add_or_remove__(
-            self, request: Request, recipe: Recipe, obj_to_create) -> Response:
-        actions = {
-            RecipeFollow: 'liked',
-            Cart: 'put in cart'
-        }
+    def __add_or_remove(
+            self,
+            request: Request,
+            recipe: Recipe,
+            obj_to_create,
+            actions: dict
+    ) -> Response:
 
         is_exists = obj_to_create.objects.filter(
             user=request.user, recipe=recipe
@@ -81,50 +82,41 @@ class RecipesViewSet(ModelViewSet):
 
     @action(methods=['POST', 'DELETE'], detail=True)
     def favorite(self, request, pk):
-        return self.__add_or_remove__(
-            self.request, get_object_or_404(Recipe, pk=pk), RecipeFollow
+        return self.__add_or_remove(
+            self.request,
+            get_object_or_404(Recipe, pk=pk),
+            RecipeFollow,
+            {'obj_to_create': RecipeFollow}
         )
 
     @action(methods=['POST', 'DELETE'], detail=True)
     def shopping_cart(self, request, pk):
-        return self.__add_or_remove__(
-            self.request, get_object_or_404(Recipe, pk=pk), Cart
+        return self.__add_or_remove(
+            self.request,
+            get_object_or_404(Recipe, pk=pk),
+            Cart,
+            {'obj_to_create': Cart}
         )
 
     @action(methods=['GET'], detail=False,
             permission_classes=[IsAuthenticated])
     def download_shopping_cart(self, request):
-        def get_ingredient_filed(field: str) -> int:
-            ingredients_indexes = {
-                'name': 0,
-                'measurement_unit': 1,
-                'amount': 2
-            }
-            return ingredients_indexes.get(field)
-
         ingredients_total = {}
-        # При аннотировании в выборке всё равно присутствуют повторяющиеся ингредиенты
         ingredients = IngredientRecipe.objects.filter(
-            recipe__cart_of__user=request.user
-        ).values_list(
+            recipe__cart__user=request.user
+        ).order_by('ingredients__name').values(
             'ingredients__name',
-            'ingredients__measurement_unit',
-            'amount'
-        )
-        for ingredient in ingredients:
-            name = ingredient[get_ingredient_filed('name')]
-            amount = ingredient[get_ingredient_filed('amount')]
+            'ingredients__measurement_unit'
+        ).annotate(amount=Sum('amount'))
 
-            if name in ingredients_total:
-                ingredients_total[name]['amount'] += amount
-            else:
-                measurement_unit = ingredient[get_ingredient_filed(
-                    'measurement_unit'
-                )]
-                ingredients_total[name] = {
-                    'measurement_unit': measurement_unit,
-                    'amount': amount
-                }
+        for ingredient in ingredients:
+            ingredients_total[ingredient.get('ingredients__name')] = {
+                'measurement_unit': ingredient.get(
+                    'ingredients__measurement_unit'
+                ),
+                'amount': ingredient.get('amount')
+            }
+
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = ('attachment;'
                                            ' filename="shopping_cart.pdf"')

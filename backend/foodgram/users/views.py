@@ -7,7 +7,7 @@ from rest_framework.status import (HTTP_201_CREATED, HTTP_204_NO_CONTENT,
                                    HTTP_400_BAD_REQUEST)
 
 from .models import User, UserFollow
-from .serializers import CustomUserSerializerWithRecipes as UserSerializer
+from recipes.serializers import CustomUserSerializerWithRecipes
 
 
 class UserFollowsViewSet(UserViewSet):
@@ -26,7 +26,9 @@ class UserFollowsViewSet(UserViewSet):
                 )
             UserFollow.objects.create(user=user, author=author)
             return Response(
-                UserSerializer(author, context={'request': request}).data,
+                CustomUserSerializerWithRecipes(
+                    author, context={'request': request}
+                ).data,
                 HTTP_201_CREATED
             )
 
@@ -42,7 +44,7 @@ class UserFollowsViewSet(UserViewSet):
     @action(methods=['GET'], detail=False)
     def subscriptions(self, request):
         return self.get_paginated_response(
-            UserSerializer(
+            CustomUserSerializerWithRecipes(
                 self.paginate_queryset(
                     User.objects.filter(subscribers__user=request.user)
                 ),

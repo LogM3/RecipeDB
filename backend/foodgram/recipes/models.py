@@ -72,7 +72,7 @@ class IngredientRecipe(models.Model):
         models.CASCADE,
         verbose_name='Рецепт'
     )
-    amount = models.IntegerField(verbose_name='')
+    amount = models.IntegerField(verbose_name='Количество')
 
     class Meta:
         ordering = ['id']
@@ -124,7 +124,7 @@ class Cart(models.Model):
     recipe = models.ForeignKey(
         Recipe,
         models.CASCADE,
-        'cart_of',
+        'cart',
         verbose_name='Рецепт'
     )
 
