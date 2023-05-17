@@ -1,4 +1,3 @@
-from core.permissions import IsAuthor
 from django.db.models import Sum
 from django.db.transaction import atomic
 from django.http import HttpResponse
@@ -16,6 +15,7 @@ from rest_framework.status import (HTTP_201_CREATED, HTTP_204_NO_CONTENT,
                                    HTTP_400_BAD_REQUEST)
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
+from core.permissions import IsAuthor
 from .filters import RecipeFilters
 from .models import Cart, Ingredient, IngredientRecipe, Recipe, RecipeFollow
 from .serializers import (CreateRecipeSerializer, IngredientsSerializer,
@@ -52,7 +52,7 @@ class RecipesViewSet(ModelViewSet):
             request: Request,
             recipe: Recipe,
             obj_to_create,
-            actions: dict
+            error_context_msg: str
     ) -> Response:
 
         is_exists = obj_to_create.objects.filter(
@@ -61,7 +61,7 @@ class RecipesViewSet(ModelViewSet):
         if request.method == 'POST':
             if is_exists:
                 return Response(
-                    f'You already {actions[obj_to_create]} this recipe',
+                    f'You are already {error_context_msg} this recipe',
                     status=HTTP_400_BAD_REQUEST
                 )
             obj_to_create.objects.create(user=request.user, recipe=recipe)
@@ -70,7 +70,7 @@ class RecipesViewSet(ModelViewSet):
             )
         if not is_exists:
             return Response(
-                f'You are not {actions[obj_to_create]} this recipe',
+                f'You are not {error_context_msg} this recipe',
                 status=HTTP_400_BAD_REQUEST
             )
         with atomic():
@@ -86,7 +86,7 @@ class RecipesViewSet(ModelViewSet):
             self.request,
             get_object_or_404(Recipe, pk=pk),
             RecipeFollow,
-            {'obj_to_create': RecipeFollow}
+            'liked'
         )
 
     @action(methods=['POST', 'DELETE'], detail=True)
@@ -95,7 +95,7 @@ class RecipesViewSet(ModelViewSet):
             self.request,
             get_object_or_404(Recipe, pk=pk),
             Cart,
-            {'obj_to_create': Cart}
+            'put to cart'
         )
 
     @action(methods=['GET'], detail=False,
@@ -107,34 +107,34 @@ class RecipesViewSet(ModelViewSet):
         ).order_by('ingredients__name').values(
             'ingredients__name',
             'ingredients__measurement_unit'
-        ).annotate(amount=Sum('amount'))
+        ).annotate(total_amount=Sum('amount'))
 
         for ingredient in ingredients:
             ingredients_total[ingredient.get('ingredients__name')] = {
                 'measurement_unit': ingredient.get(
                     'ingredients__measurement_unit'
                 ),
-                'amount': ingredient.get('amount')
+                'amount': ingredient.get('total_amount')
             }
 
         response = HttpResponse(content_type='application/pdf')
         response['Content-Disposition'] = ('attachment;'
                                            ' filename="shopping_cart.pdf"')
-        pdfmetrics.registerFont(TTFont('pixel_font', 'PixelFont.ttf', 'UTF-8'))
+        pdfmetrics.registerFont(TTFont('pacifico', 'Pacifico.ttf', 'UTF-8'))
         page = Canvas(response)
-        page.setFont('pixel_font', size=18)
-        page.drawString(150, 800, 'Список ингредиентов')
-        page.setFont('pixel_font', size=14)
-        y_axis = 750
+        page.setFont('pacifico', size=24)
+        page.drawString(190, 800, 'Список ингредиентов')
+        page.setFont('pacifico', size=21)
+        y_axis = 740
         x_axis = 75
         for count, (name, data) in enumerate(ingredients_total.items(), 1):
             page.drawString(
                 x_axis,
                 y_axis,
-                f'{count}){name} - {data.get("amount")} '
+                f'{count}. {name} - {data.get("amount")} '
                 f'{data.get("measurement_unit")}.'
             )
-            y_axis -= 30
+            y_axis -= 38
 
         page.showPage()
         page.save()
