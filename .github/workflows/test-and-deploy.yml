@@ -21,20 +21,4 @@ jobs:
         with:
           context: backend/
           push: true
-          tags: logm3/practicum:latest 
-
-  deploy:
-    runs-on: ubuntu-latest
-    needs: build_and_push_to_docker_hub
-    steps:
-    - name: Repository checkout
-      uses: actions/checkout@v2
-    - name: executing remote ssh commands to deploy
-      uses: appleboy/ssh-action@master
-      with:
-        host: ${{ secrets.HOST }}
-        username: ${{ secrets.USER }}
-        key: ${{ secrets.SSH_KEY }}
-        passphrase: ${{ secrets.PASSPHRASE }}
-        script: |
-          sudo docker pull logm3/practicum
+          tags: logm3/practicum:latest
