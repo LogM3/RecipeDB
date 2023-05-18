@@ -1,1 +1,1 @@
-# praktikum_new_diplom
+# Данные от админки: Логин - admin; Пароль - admin$ 
