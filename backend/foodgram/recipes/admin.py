@@ -10,7 +10,7 @@ class IngredientAdmin(admin.ModelAdmin):
 
 class RecipeAdmin(admin.ModelAdmin):
     list_display = ['name', 'author']
-    search_fields = ['author', 'name', 'tags']
+    search_fields = ['author__username', 'name', 'tags__name']
 
 
 admin.site.register(Ingredient, IngredientAdmin)
