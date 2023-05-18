@@ -16,7 +16,7 @@ from rest_framework.status import (HTTP_201_CREATED, HTTP_204_NO_CONTENT,
 from rest_framework.viewsets import ModelViewSet, ReadOnlyModelViewSet
 
 from core.permissions import IsAuthor
-from .filters import RecipeFilters
+from .filters import IngredientFilter, RecipeFilters
 from .models import Cart, Ingredient, IngredientRecipe, Recipe, RecipeFollow
 from .serializers import (CreateRecipeSerializer, IngredientsSerializer,
                           ReadOnlyRecipeSerializer, ShortRecipeSerializer)
@@ -26,8 +26,7 @@ class IngredientsViewSet(ReadOnlyModelViewSet):
     queryset = Ingredient.objects.all()
     serializer_class = IngredientsSerializer
     pagination_class = None
-    filter_backends = [SearchFilter]
-    search_fields = ['name']
+    filterset_class = IngredientFilter
     permission_classes = [IsAuthenticatedOrReadOnly]
 
 
