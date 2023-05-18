@@ -7,7 +7,7 @@ def add_ingredients(ingredients_data: list, recipe: Recipe) -> Recipe:
     for ingredient_data in ingredients_data:
         ingredients_list.append(IngredientRecipe(
             recipe=recipe,
-            ingredients_id=ingredient_data.get('id'),
+            ingredient_id=ingredient_data.get('id'),
             amount=ingredient_data.get('amount')
         ))
     IngredientRecipe.objects.bulk_create(ingredients_list)

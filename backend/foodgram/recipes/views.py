@@ -104,15 +104,15 @@ class RecipesViewSet(ModelViewSet):
         ingredients_total = {}
         ingredients = IngredientRecipe.objects.filter(
             recipe__cart__user=request.user
-        ).order_by('ingredients__name').values(
-            'ingredients__name',
-            'ingredients__measurement_unit'
+        ).order_by('ingredient__name').values(
+            'ingredient__name',
+            'ingredient__measurement_unit'
         ).annotate(total_amount=Sum('amount'))
 
         for ingredient in ingredients:
-            ingredients_total[ingredient.get('ingredients__name')] = {
+            ingredients_total[ingredient.get('ingredient__name')] = {
                 'measurement_unit': ingredient.get(
-                    'ingredients__measurement_unit'
+                    'ingredient__measurement_unit'
                 ),
                 'amount': ingredient.get('total_amount')
             }

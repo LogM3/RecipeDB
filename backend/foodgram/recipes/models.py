@@ -62,7 +62,7 @@ class Recipe(models.Model):
 
 
 class IngredientRecipe(models.Model):
-    ingredients = models.ForeignKey(
+    ingredient = models.ForeignKey(
         Ingredient,
         models.CASCADE,
         verbose_name='Ингредиент'
@@ -79,12 +79,12 @@ class IngredientRecipe(models.Model):
         verbose_name = 'Ингредиент-рецепт'
         verbose_name_plural = 'Ингредиент-рецепты'
         constraints = [models.UniqueConstraint(
-            fields=['ingredients', 'recipe'],
+            fields=['ingredient', 'recipe'],
             name='Unique IngredientRecipe'
         )]
 
     def __str__(self):
-        return f'{self.ingredients} ({self.amount}) -> {self.recipe}'
+        return f'{self.ingredient} ({self.amount}) -> {self.recipe}'
 
 
 class RecipeFollow(models.Model):

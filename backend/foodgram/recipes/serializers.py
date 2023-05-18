@@ -35,9 +35,9 @@ class IngredientsSerializer(ModelSerializer):
 
 
 class IngredientsRecipeSerializer(ModelSerializer):
-    name = ReadOnlyField(source='ingredients.name')
-    measurement_unit = ReadOnlyField(source='ingredients.measurement_unit')
-    id = ReadOnlyField(source='ingredients.id')
+    name = ReadOnlyField(source='ingredient.name')
+    measurement_unit = ReadOnlyField(source='ingredient.measurement_unit')
+    id = ReadOnlyField(source='ingredient.id')
 
     class Meta:
         model = IngredientRecipe
