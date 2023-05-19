@@ -5,13 +5,14 @@ from .models import Ingredient, Recipe
 
 class IngredientFilter(FilterSet):
     name = filters.CharFilter(lookup_expr='icontains')
+
     class Meta:
         model = Ingredient
         fields = ['name']
 
 
 class RecipeFilters(FilterSet):
-    tags = filters.CharFilter(field_name='tags__slug', lookup_expr='exact')
+    tags = filters.CharFilter(field_name='tags__slug', lookup_expr='in')
     author = filters.NumberFilter(field_name='author', lookup_expr='exact')
     is_favorited = filters.BooleanFilter(method='filter_is_favorited')
     is_in_shopping_cart = filters.BooleanFilter(method='filter_is_in_cart')
