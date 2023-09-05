@@ -29,6 +29,9 @@ sudo docker cp .env infra-backend-1:/app/foodgram/
 python manage.py collectstatic
 ```
 
-
+### Документация к API доступна по адресу:
+```
+/api/docs/
+```
 # Данные от админки: Логин - admin; Пароль - admin$ 
 # IP: 51.250.72.29
